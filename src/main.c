@@ -20,11 +20,20 @@ int main(int argc, char* argv[]){
         return -1;
     }
 
-    struct sockaddr_in addr, client_addr;
+    struct sockaddr_in addr = {0};
+    struct sockaddr_in client_addr = {0};
     addr.sin_family = AF_INET;
     addr.sin_port = htons(8000);
     inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
     socklen_t addrlen = sizeof(addr);
+    int opt = 1;
+    setsockopt(
+        sfd,
+        SOL_SOCKET,
+        SO_REUSEADDR,
+        &opt,
+        sizeof(opt)
+    );
     int result = bind(sfd, (struct sockaddr *) &addr,  addrlen);
     if (result==-1){
         perror("bind");
@@ -81,17 +90,57 @@ int main(int argc, char* argv[]){
 
         char *content = NULL;
         int content_len = ds_io_read_file(path+1, &content);
-        int response_len = snprintf(NULL, 0, "%s 200 OK\nContent-Type: text/html\nContent-Length: %d\n\n%s", protocol,  content_len, content);
-        char *response = calloc(response_len+1, sizeof(char));
-        snprintf(response, response_len + 1, "%s 200 OK\nContent-Type: text/html\nContent-Length: %d\n\n%s", protocol, content_len, content);
 
+        char *resp_code = "200 OK";
+        if(content_len == -1){
+            perror("No file");
+            resp_code = "404 Not Found";
+            content = "404 Not Found\n";
+            content_len = strlen(content);
+        }
+        int response_len = snprintf(
+            NULL,
+            0,
+            "%s %s\r\n"
+            "Content-Type: text/html\r\n"
+            "Content-Length: %d\r\n"
+            "\r\n"
+            "%s",
+            protocol,
+            resp_code,
+            content_len,
+            content
+        );
+        char *response = calloc(response_len+1, sizeof(char));
+        snprintf(
+            response,
+            response_len+1,
+            "%s %s\r\n"
+            "Content-Type: text/html\r\n"
+            "Content-Length: %d\r\n"
+            "\r\n"
+            "%s",
+            protocol,
+            resp_code,
+            content_len,
+            content
+        );
+        printf("%s\n", response);
         write(cfd, response, response_len);
+        result = close(cfd);
+        if (result==-1){
+            perror("close");
+            return -1;
+        }
+        free(response);
+
     }
         result = close(sfd);
         if (result==-1){
             perror("close");
             return -1;
         }
+
 
     return 0;
 }
