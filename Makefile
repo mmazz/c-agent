@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = -Wall -Werror -g -Iinclude -MMD -MP
+CFLAGS = -Wall -g -Iinclude -MMD -MP
 
 SRC_DIR = src
 CLI_DIR = cli

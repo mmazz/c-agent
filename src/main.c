@@ -1,6 +1,7 @@
 #include "common.h"
 #include "protocol.h"
 #include "server.h"
+#include "data-type.h"
 #include <stdio.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -44,7 +45,8 @@ int main(int argc, char* argv[]){
         perror("listen");
         return -1;
     }
-    while(1){
+    //lo apague
+    while(0){
         client_addr_size = sizeof(client_addr);
         cfd = accept(sfd, (struct sockaddr *) &client_addr, &client_addr_size);
         if (cfd==-1){
@@ -140,6 +142,22 @@ int main(int argc, char* argv[]){
             perror("close");
             return -1;
         }
+
+    struct rbt tree;
+    rbt_init(&tree);
+    struct rbt_node node0;
+    rbt_node_init(&node0, 10);
+    int res = rbt_insert(&tree, &node0);
+
+    struct rbt_node node1;
+    rbt_node_init(&node1, 1);
+    res = rbt_insert(&tree, &node1);
+
+    struct rbt_node node2;
+    rbt_node_init(&node2, 11);
+    res = rbt_insert(&tree, &node2);
+
+    rbt_print(&tree);
 
 
     return 0;

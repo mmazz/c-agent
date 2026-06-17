@@ -2,35 +2,47 @@
 #define DATATYPE_H
 
 #include <stddef.h>
+#include <stdbool.h>
+#include <stdio.h>
 
-struct bst_node {
-    struct bst_node *left;
-    struct bst_node *right;
-    void *data;
+enum rbt_color{
+    RED,
+    BLACK
 };
 
-struct bst {
-    struct bst_node *root;
+struct rbt_node {
+    struct rbt_node *left;
+    struct rbt_node *right;
+    struct rbt_node *parent;
+    enum rbt_color color;
+    int data;
+};
+
+struct rbt {
+    struct rbt_node *root;
     size_t size;
 };
 
 
-void bst_init(struct bst *tree);
+void rbt_node_init(struct rbt_node *node, int data);
 
-int bst_insert(
-    struct bst *tree,
-    struct bst_node *node
+void rbt_init(struct rbt *tree);
+
+int rbt_insert(
+    struct rbt *tree,
+    struct rbt_node *node
 );
 
-struct bst_node *bst_find(
-    struct bst *tree,
+struct bt_node *rbt_find(
+    struct rbt *tree,
     const void *key
 );
 
-void bst_remove(
-    struct bst *tree,
-    struct bst_node *node
+void rbt_remove(
+    struct rbt *tree,
+    struct rbt_node *node
 );
+void rbt_print_node(struct rbt_node *node, int depth);
 
-
+void rbt_print(struct rbt *tree);
 #endif
