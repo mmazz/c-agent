@@ -35,6 +35,7 @@ void rbt_init(struct rbt *tree){
     tree->root = NULL;
 }
 
+// https://www.geeksforgeeks.org/dsa/insertion-in-red-black-tree/
 // 0 is good, -1 error, 1 ya estaba
 int rbt_insert(struct rbt *tree, struct rbt_node *node){
     int res = 0;
@@ -43,37 +44,35 @@ int rbt_insert(struct rbt *tree, struct rbt_node *node){
         node->color = BLACK;
 
     } else{
-        bool found = false;
         struct rbt_node *actual = tree->root;
-        int actual_data = actual->data;
         int data = node->data;
 
-        while(actual && !found){
-           if(data > actual_data){
-               if(!actual->right){
-                   actual->right = node;
-                   node->parent = actual;
-                   node->color = RED;
-                   found = true;
-               } else
-                   actual = actual->right;
+        while(actual) {
 
-           } else if(data < actual_data){
-               if(!actual->left){
-                   actual->left = node;
-                   node->parent = actual;
-                   node->color = RED;
-                   found = true;
-               } else
-                   actual = actual->left;
+            if(data > actual->data) {
 
-           } else{ // ya estaba
-              found = true;
-              res = 1;
-           }
-           actual_data = actual->data;
+                if(actual->right)
+                    actual = actual->right;
+                else {
+                    actual->right = node;
+                    node->parent = actual;
+                    break;
+                }
+
+            } else if(data < actual->data) {
+
+                if(actual->left)
+                    actual = actual->left;
+                else {
+                    actual->left = node;
+                    node->parent = actual;
+                    break;
+                }
+
+            } else {
+                return 1;
+            }
         }
-
     }
     return res;
 }
