@@ -10,60 +10,92 @@
 #define DS_SS_IMPLEMENTATION
 #define DS_IO_IMPLEMENTATION
 #include "ds.h"
+#include <stdio.h>
+#include <netdb.h>
 
 #define MAX_LEN 1024
-int main(int argc, char* argv[]){
-    int sfd = socket(AF_INET, SOCK_STREAM, 0);
-    int cfd;
-    socklen_t client_addr_size;
-    if (sfd==-1){
-        perror("socket");
-        return -1;
+
+#define BUF_SIZE 500
+
+int main(int argc, char *argv[])
+{
+    struct addrinfo          hints;
+
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s port\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+    hints.ai_protocol = 0;          /* Any protocol */
+    hints.ai_canonname = NULL;
+    hints.ai_addr = NULL;
+    hints.ai_next = NULL;
+
+    int                      s;
+    struct addrinfo          *result;
+    s = getaddrinfo(NULL, argv[1], &hints, &result);
+    if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
     }
 
-    struct sockaddr_in addr = {0};
-    struct sockaddr_in client_addr = {0};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(8000);
-    inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-    socklen_t addrlen = sizeof(addr);
-    int opt = 1;
-    setsockopt(
-        sfd,
-        SOL_SOCKET,
-        SO_REUSEADDR,
-        &opt,
-        sizeof(opt)
-    );
-    int result = bind(sfd, (struct sockaddr *) &addr,  addrlen);
-    if (result==-1){
-        perror("bind");
-        return -1;
+    int sfd;
+    struct addrinfo *rp;
+    for (rp = result; rp != NULL; rp = rp->ai_next) {
+        sfd = socket(rp->ai_family, rp->ai_socktype,
+                     rp->ai_protocol);
+        if (sfd == -1)
+            continue;
+
+        if (bind(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
+            break;                  /* Success */
+
+        close(sfd);
     }
-    result = listen(sfd, 10);
-    if (result==-1){
+    freeaddrinfo(result);           /* No longer needed */
+
+    if (rp == NULL) {               /* No address succeeded */
+        fprintf(stderr, "Could not bind\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (listen(sfd, 10) == -1) {
         perror("listen");
-        return -1;
+        exit(EXIT_FAILURE);
     }
-    //lo apague
-    while(0){
-        client_addr_size = sizeof(client_addr);
-        cfd = accept(sfd, (struct sockaddr *) &client_addr, &client_addr_size);
-        if (cfd==-1){
-            perror("accept");
-            return -1;
-        }
-        char buffer[MAX_LEN] = {0};
 
-        int result = read(cfd, buffer, MAX_LEN);
-        if (result == -1){
+
+    int cfd;
+    struct sockaddr_storage client_addr;
+    socklen_t client_addr_len;
+    char buffer[BUF_SIZE];
+    ssize_t res;
+    for (;;) {
+        client_addr_len = sizeof(client_addr);
+        cfd = accept(sfd, (struct sockaddr *) &client_addr, &client_addr_len);
+        if (cfd == -1) {
+            perror("accept");
+            continue;  // seguí esperando otras conexiones, no mates el server
+        }
+
+        // opcional: saber quién se conectó
+        char host[NI_MAXHOST], service[NI_MAXSERV];
+        getnameinfo((struct sockaddr *) &client_addr, client_addr_len,
+                    host, NI_MAXHOST, service, NI_MAXSERV, NI_NUMERICSERV);
+        printf("Conexión de %s:%s\n", host, service);
+
+        res = read(cfd, buffer, BUF_SIZE);
+        if (res == -1) {
             perror("read");
+            close(cfd);
             continue;
         }
 
-        unsigned int buffer_len = result;
-        printf("Client (%u): %s", buffer_len, buffer);
-
+        unsigned int buffer_len = (unsigned int) res;
+        printf("Client (%u): %.*s\n", buffer_len, buffer_len, buffer);
 
         ds_string_slice request, token;
         ds_string_slice_init(&request, buffer, buffer_len);
@@ -129,16 +161,16 @@ int main(int argc, char* argv[]){
         );
         printf("%s\n", response);
         write(cfd, response, response_len);
-        result = close(cfd);
-        if (result==-1){
+        res = close(cfd);
+        if (res==-1){
             perror("close");
             return -1;
         }
         free(response);
 
     }
-        result = close(sfd);
-        if (result==-1){
+        res = close(sfd);
+        if (res==-1){
             perror("close");
             return -1;
         }
