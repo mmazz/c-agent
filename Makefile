@@ -2,20 +2,33 @@ CC = gcc
 
 CFLAGS = -Wall -g -Iinclude -MMD -MP
 
-SRC_DIR = src
-CLI_DIR = cli
+SRC_DIR   = src
+CLI_DIR   = cli
+TEST_DIR  = tests
 BUILD_DIR = build
 
 AGENT_SRCS = $(wildcard $(SRC_DIR)/*.c)
-CLI_SRCS = $(wildcard $(CLI_DIR)/*.c)
+CLI_SRCS   = $(wildcard $(CLI_DIR)/*.c)
+TEST_SRCS  = $(wildcard $(TEST_DIR)/*.c)
 
 AGENT_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/src/%.o,$(AGENT_SRCS))
-CLI_OBJS = $(patsubst $(CLI_DIR)/%.c,$(BUILD_DIR)/cli/%.o,$(CLI_SRCS))
+CLI_OBJS   = $(patsubst $(CLI_DIR)/%.c,$(BUILD_DIR)/cli/%.o,$(CLI_SRCS))
+TEST_OBJS  = $(patsubst $(TEST_DIR)/%.c,$(BUILD_DIR)/tests/%.o,$(TEST_SRCS))
+
+# main.c del agente no debe linkearse con los tests
+AGENT_MAIN = $(BUILD_DIR)/src/main.o
+AGENT_LIB_OBJS = $(filter-out $(AGENT_MAIN),$(AGENT_OBJS))
 
 AGENT = $(BUILD_DIR)/rasp-agent
-CLI = $(BUILD_DIR)/rasp-cli
+CLI    = $(BUILD_DIR)/rasp-cli
+TEST   = $(BUILD_DIR)/rasp-test
 
-all: $(AGENT) $(CLI)
+DEPS = \
+	$(AGENT_OBJS:.o=.d) \
+	$(CLI_OBJS:.o=.d) \
+	$(TEST_OBJS:.o=.d)
+
+all: $(AGENT) $(CLI) $(TEST)
 
 $(AGENT): $(AGENT_OBJS)
 	$(CC) $^ -o $@
@@ -23,19 +36,24 @@ $(AGENT): $(AGENT_OBJS)
 $(CLI): $(CLI_OBJS)
 	$(CC) $^ -o $@
 
+$(TEST): $(TEST_OBJS) $(AGENT_LIB_OBJS)
+	$(CC) $^ -o $@
 
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.c
-	mkdir -p $(BUILD_DIR)/src
+	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/cli/%.o: $(CLI_DIR)/%.c
-	mkdir -p $(BUILD_DIR)/cli
+	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/tests/%.o: $(TEST_DIR)/%.c
+	mkdir -p $(@D)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)
 
--include $(OBJS:.o=.d)
+-include $(DEPS)
 
 .PHONY: all clean
