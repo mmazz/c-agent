@@ -27,15 +27,16 @@ int main(int argc, char *argv[])
     }
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;    /* Allow IPv4 or IPv6 */
-    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_socktype = SOCK_STREAM; // TCP
     hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
     hints.ai_protocol = 0;          /* Any protocol */
     hints.ai_canonname = NULL;
     hints.ai_addr = NULL;
     hints.ai_next = NULL;
 
-    int                      s;
-    struct addrinfo          *result;
+    int s;
+    struct addrinfo *result;
+
     s = getaddrinfo(NULL, argv[1], &hints, &result);
     if (s != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
@@ -102,11 +103,13 @@ int main(int argc, char *argv[])
         ds_string_slice_tokenize(&request, ' ', &token);
         char *verb = NULL;
         ds_string_slice_to_owned(&token, &verb);
-        if(strcmp(verb, "GET")!= 0){
-            perror("not get");
-            // TODO respond with 400
+        if (strcmp(verb, "GET") != 0) {
+            fprintf(stderr, "Unsupported method\n");
+            close(cfd);
+            free(verb);
             continue;
         }
+
         ds_string_slice_tokenize(&request, ' ', &token);
         char *path = NULL;
         ds_string_slice_to_owned(&token, &path);
